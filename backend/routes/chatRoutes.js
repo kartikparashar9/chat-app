@@ -14,7 +14,7 @@ const { protect } = require("../middleware/jwtAuthMiddleware.js");
 const router = express.Router();
 
 // One-to-One Chat
-router.post("/", protect, accessChats);
+router.post("/one-one", protect, accessChats);
 
 // Get all chats
 router.get("/", protect, fetchChats);

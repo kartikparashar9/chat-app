@@ -1,83 +1,130 @@
 const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 const { generateToken } = require("../middleware/jwtAuthMiddleware.js");
 
 // ------------------ LogIn ------------------
 async function login(req, res) {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    return res.status(401).json({
-      message: "User not found"
+    if (!user) {
+      return res.status(401).json({
+        message: "User not found",
+      });
+    }
+
+    // GOOGLE LOGIN CHECK
+    if (!user.password) {
+      return res.status(400).json({
+        message: "Please login with Google",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Incorrect Password",
+      });
+    }
+
+    const token = generateToken(user);
+
+    user.password = undefined;
+
+    return res.status(200).json({
+      message: "Login Successful",
+      token,
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
     });
   }
-
-  if (user.googleId) {
-    return res.status(400).json({
-      message: "Please login with Google"
-    });
-  }
-
-  const isMatch = await bcrypt.compare(password, user.password);
-
-  if (!isMatch) {
-    return res.status(401).json({
-      message: "Incorrect Password"
-    });
-  }
-
-  const token = generateToken(user);
-  user.password = undefined;
-
-  return res.status(200).json({
-    message: "Login Successful",
-    token
-  });
 }
 
-
 // ------------------ SignUp ------------------
-async function signup(req, res) {
-  const { name, email, password, avatar, gender, bio, dob } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      message: "All fields are required"
-    });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({
-      message: "Invalid email format"
-    });
-  }
-
+const signup = async (req, res) => {
   try {
+    const {
+      name,
+      username,
+      email,
+      password,
+      gender,
+      bio,
+      dob,
+    } = req.body;
+
+    // REQUIRED FIELDS
+    if (!name || !username || !email || !password || !dob) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    // EMAIL VALIDATION
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: "Invalid email format",
+      });
+    }
+
+    // USERNAME VALIDATION
+    const usernameRegex = /^[a-zA-Z0-9_.]+$/;
+
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        message:
+          "Username can only contain letters, numbers, _ and .",
+      });
+    }
+
+    // CHECK EMAIL
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return res.status(400).json({
-        message: "User already exists"
+        message: "Email already exists",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      avatar,
-      gender,
-      bio,
-      dob
+    // CHECK USERNAME
+    const existingUsername = await User.findOne({
+      username,
     });
 
+    if (existingUsername) {
+      return res.status(400).json({
+        message: "Username already taken",
+      });
+    }
+
+    // HASH PASSWORD
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // CLOUDINARY IMAGE
+    const avatarUrl = req.file ? req.file.path : "";
+
+    // CREATE USER
+    const user = await User.create({
+      name,
+      username,
+      email,
+      password: hashedPassword,
+      avatar: avatarUrl,
+      gender,
+      bio,
+      dob,
+    });
+
+    // TOKEN
     const token = generateToken(user);
 
     user.password = undefined;
@@ -85,18 +132,19 @@ async function signup(req, res) {
     return res.status(201).json({
       message: "User Successfully Created",
       token,
-      user
+      user,
     });
-
   } catch (error) {
+    console.log(error);
+
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
-}
+};
 
-// ------------------ Google LogIn ------------------
+// ------------------ Google Login ------------------
 async function googleLogin(req, res) {
   try {
     const { name, email, googleId, avatar } = req.body;
@@ -106,39 +154,51 @@ async function googleLogin(req, res) {
     if (!user) {
       user = await User.create({
         name,
+        username: email.split("@")[0],
         email,
         googleId,
-        avatar
+        avatar,
+        dob: "",
       });
     }
 
-    const token = generateToken();
+    const token = generateToken(user);
+
     user.password = undefined;
 
     return res.status(200).json({
       message: "User Successfully Login",
       token,
-      user
+      user,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 }
 
-// ------------------ Get User By Id------------------
+// ------------------ Get User By Id ------------------
 async function getUserById(req, res) {
   try {
-    const user = await User.findById(req.params.id).select("-password");
-    return res.status(200).json({ user });
+    const user = await User.findById(req.params.id).select(
+      "-password"
+    );
 
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      user,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -146,11 +206,20 @@ async function getUserById(req, res) {
 // ------------------ Update User ------------------
 async function updateUser(req, res) {
   try {
-    const { name, email, avatar, gender, bio, dob } = req.body;
+    const {
+      name,
+      username,
+      email,
+      avatar,
+      gender,
+      bio,
+      dob,
+    } = req.body;
 
     const updateData = {};
 
     if (name) updateData.name = name;
+    if (username) updateData.username = username;
     if (email) updateData.email = email;
     if (avatar) updateData.avatar = avatar;
     if (gender) updateData.gender = gender;
@@ -163,45 +232,44 @@ async function updateUser(req, res) {
       { new: true }
     ).select("-password");
 
-    if(!user) {
-      return res.status(401).json({
-        message: "User not found."
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
       });
     }
 
     return res.status(200).json({
       message: "User Updated Successfully",
-      user
+      user,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 }
 
-
 // ------------------ Delete User ------------------
 async function deleteUser(req, res) {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndDelete(
+      req.params.id
+    );
 
-    if(!user) {
-      return res.status(401).json({
-        message: "User not found."
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
       });
     }
 
     return res.status(200).json({
-      message: "User Deleted Successfully"
+      message: "User Deleted Successfully",
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -211,23 +279,36 @@ const searchUsers = async (req, res) => {
   try {
     const keyword = req.query.search
       ? {
-        $or: [
-          { name: { $regex: req.query.search, $options: "i" } },
-          { email: { $regex: req.query.search, $options: "i" } },
-        ],
-      }
+          $or: [
+            {
+              name: {
+                $regex: req.query.search,
+                $options: "i",
+              },
+            },
+            {
+              username: {
+                $regex: req.query.search,
+                $options: "i",
+              },
+            },
+          ],
+        }
       : {};
 
     const users = await User.find(keyword)
-      .find({ _id: { $ne: req.user._id } })
-      .select("name email avatar");
+      .find({
+        _id: {
+          $ne: req.user._id,
+        },
+      })
+      .select("name username avatar bio");
 
     return res.status(200).json(users);
-
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -239,5 +320,5 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
-  searchUsers
+  searchUsers,
 };

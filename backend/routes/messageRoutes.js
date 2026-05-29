@@ -1,25 +1,36 @@
-const express = require('express');
-
-const {
-    sendMessage,
-    allMessages,
-    markAsSeen
-} = require('../controller/messageController');
-
-const { protect } = require('../middleware/jwtAuthMiddleware');
+const express = require("express");
 
 const router = express.Router();
 
+const {
+  sendMessage,
+  allMessages,
+  markAsSeen,
+} = require("../controller/messageController.js");
+
+const {
+  protect,
+} = require("../middleware/jwtAuthMiddleware.js");
+
 // SEND MESSAGE
-router.post("/", protect, sendMessage);
+router.post(
+  "/send",
+  protect,
+  sendMessage
+);
 
+// GET ALL MESSAGES
+router.get(
+  "/:conversationId",
+  protect,
+  allMessages
+);
 
-// GET ALL MESSAGES OF CHAT
-router.get("/:chatId", protect, allMessages);
-
-
-// MARK MESSAGE AS SEEN
-router.put("/seen/:messageId", protect, markAsSeen);
-
+// MARK AS SEEN
+router.put(
+  "/seen",
+  protect,
+  markAsSeen
+);
 
 module.exports = router;

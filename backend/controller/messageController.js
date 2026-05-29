@@ -1,54 +1,110 @@
-const Message = require("../models/messageModel.js");
-const User = require("../models/userModel.js");
-const Chat = require("../models/chatModel.js");
+const Message = require("../models/messageModel");
+const Conversation = require("../models/conversationModel");
 
-// ------------------ Send Message ------------------
+// ---------------- SEND MESSAGE ----------------
 const sendMessage = async (req, res) => {
   try {
-    const { content, chatId, messageType = "text" } = req.body;
+    const {
+      content,
+      conversationId,
+      messageType = "text",
+    } = req.body;
 
-    if (!content || !chatId) {
-      return res.status(400).json({ message: "Content and ChatId required" });
+    // VALIDATION
+    if (!content || !conversationId) {
+      return res.status(400).json({
+        message:
+          "Content and Conversation ID are required",
+      });
     }
 
-    const chat = await Chat.findById(chatId);
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
+    // CHECK CONVERSATION EXISTS
+    const conversation =
+      await Conversation.findById(
+        conversationId
+      );
+
+    if (!conversation) {
+      return res.status(404).json({
+        message: "Conversation not found",
+      });
     }
 
-    const isMember = chat.users.some(
-      (u) => u.toString() === req.user._id.toString()
-    );
+    // CHECK USER IS MEMBER
+    const isMember =
+      conversation.members.some(
+        (member) =>
+          member.toString() ===
+          req.user._id.toString()
+      );
+
     if (!isMember) {
-      return res.status(403).json({ message: "Not a member of this chat" });
+      return res.status(403).json({
+        message:
+          "You are not part of this conversation",
+      });
     }
 
+    // CREATE MESSAGE
     let message = await Message.create({
       sender: req.user._id,
       content,
-      chat: chatId,
+      conversation: conversationId,
       messageType,
     });
 
-    message = await Message.findById(message._id)
-      .populate("sender", "name email avatar")
+    // POPULATE
+    message = await Message.findById(
+      message._id
+    )
+      .populate(
+        "sender",
+        "name username avatar"
+      )
       .populate({
-        path: "chat",
-        populate: { path: "users", select: "name email avatar" }
+        path: "conversation",
+        populate: {
+          path: "members",
+          select:
+            "name username avatar isOnline",
+        },
       });
 
-    await Chat.findByIdAndUpdate(chatId, { latestMessage: message });
+    // UPDATE LAST MESSAGE
+    await Conversation.findByIdAndUpdate(
+      conversationId,
+      {
+        lastMessage: content,
+      }
+    );
 
+    // SOCKET.IO
     const io = req.app.get("io");
-    if (io && message.chat?.users) {
-      message.chat.users.forEach((user) => {
-        if (user._id.toString() === req.user._id.toString()) return;
-        io.to(user._id.toString()).emit("message received", message);
-      });
+
+    if (
+      io &&
+      message.conversation?.members
+    ) {
+      message.conversation.members.forEach(
+        (member) => {
+          if (
+            member._id.toString() ===
+            req.user._id.toString()
+          )
+            return;
+
+          io.to(member._id.toString()).emit(
+            "message received",
+            message
+          );
+        }
+      );
     }
 
-    return res.status(201).json(message);
-
+    return res.status(201).json({
+      message: "Message sent successfully",
+      data: message,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
@@ -57,40 +113,62 @@ const sendMessage = async (req, res) => {
   }
 };
 
-// ------------------ Get All Messages ------------------
+// ---------------- GET ALL MESSAGES ----------------
 const allMessages = async (req, res) => {
   try {
-    const { chatId } = req.params;
-    const page  = parseInt(req.query.page)  || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const skip  = (page - 1) * limit;
+    const { conversationId } = req.params;
 
-    // verify chat exists
-    const chat = await Chat.findById(chatId);
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
+    const page =
+      parseInt(req.query.page) || 1;
+
+    const limit =
+      parseInt(req.query.limit) || 50;
+
+    const skip = (page - 1) * limit;
+
+    // CHECK CONVERSATION
+    const conversation =
+      await Conversation.findById(
+        conversationId
+      );
+
+    if (!conversation) {
+      return res.status(404).json({
+        message: "Conversation not found",
+      });
     }
 
-    // verify membership
-    const isMember = chat.users.some(
-      (u) => u.toString() === req.user._id.toString()
-    );
+    // CHECK MEMBER
+    const isMember =
+      conversation.members.some(
+        (member) =>
+          member.toString() ===
+          req.user._id.toString()
+      );
+
     if (!isMember) {
-      return res.status(403).json({ message: "Not a member of this chat" });
+      return res.status(403).json({
+        message:
+          "You are not part of this conversation",
+      });
     }
 
+    // FETCH MESSAGES
     const messages = await Message.find({
-      chat: chatId,
-      isDeleted: false    
+      conversation: conversationId,
+      isDeleted: false,
     })
-      .populate("sender", "name email avatar")
-      .populate("chat")
+      .populate(
+        "sender",
+        "name username avatar"
+      )
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    return res.status(200).json(messages);
-
+    return res.status(200).json({
+      messages,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
@@ -99,37 +177,59 @@ const allMessages = async (req, res) => {
   }
 };
 
-// ------------------ Mark as Seen ------------------
+// ---------------- MARK AS SEEN ----------------
 const markAsSeen = async (req, res) => {
   try {
-    const { chatId } = req.body;
+    const { conversationId } = req.body;
 
-    if (!chatId) { 
-      return res.status(400).json({ message: "ChatId is required" });
-    }
-
-    await Message.updateMany(
-      { chat: chatId, seenBy: { $ne: req.user._id } },
-      { $push: { seenBy: req.user._id } }
-    );
-
-    // notify others in real-time
-    const io = req.app.get("io");
-    if (io) {
-      io.to(chatId).emit("messages seen", {
-        chatId,
-        seenBy: req.user._id
+    if (!conversationId) {
+      return res.status(400).json({
+        message:
+          "Conversation ID is required",
       });
     }
 
-    return res.status(200).json({ message: "Messages marked as seen" });
+    await Message.updateMany(
+      {
+        conversation: conversationId,
+        seenBy: {
+          $ne: req.user._id,
+        },
+      },
+      {
+        $push: {
+          seenBy: req.user._id,
+        },
+      }
+    );
 
+    // SOCKET EVENT
+    const io = req.app.get("io");
+
+    if (io) {
+      io.to(conversationId).emit(
+        "messages seen",
+        {
+          conversationId,
+          seenBy: req.user._id,
+        }
+      );
+    }
+
+    return res.status(200).json({
+      message:
+        "Messages marked as seen",
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-module.exports = { sendMessage, allMessages, markAsSeen };
+module.exports = {
+  sendMessage,
+  allMessages,
+  markAsSeen,
+};

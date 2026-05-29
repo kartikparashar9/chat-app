@@ -76,6 +76,7 @@ const fetchChats = async (req, res) => {
     return res.status(200).json(chats);
 
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       message: "Internal Server Error",
       error: error.message,

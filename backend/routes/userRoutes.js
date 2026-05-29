@@ -1,5 +1,6 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const upload = require('../middleware/multer.js');
 
 const {
   login,
@@ -14,12 +15,12 @@ const {
 const { protect } = require("../middleware/jwtAuthMiddleware.js");
 
 // auth
-router.post("/signup", signup);
+router.post("/signup", upload.single("avatar"), signup);
 router.post("/login", login);
 router.post("/google-login", googleLogin);
 
 // search users
-router.get("/users", protect, searchUsers);
+router.get("/search", protect, searchUsers);
 
 // other user APIs
 router.get("/users/:id", protect, getUserById);

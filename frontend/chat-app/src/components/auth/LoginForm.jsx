@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { loginApi } from "../../services/api";
+import { setToken } from "../../utils/helpers";
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -34,15 +35,12 @@ const LoginForm = () => {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/user/login",
-        data,
-      );
+      const response = await loginApi(data);
 
       if (response.status === 200) {
         setFeedback("Signed in successfully.");
 
-        localStorage.setItem("token", response.data.token);
+        setToken(data.token);
 
         setData({
           email: "",
@@ -73,6 +71,10 @@ const LoginForm = () => {
         className="flex flex-col gap-3 bg-white dark:bg-gray-800 p-8 w-[450px] rounded-2xl shadow-md"
         onSubmit={handleSubmit}
       >
+        <h2 className="text-xl font-semibold text-center text-blue-800 dark:text-gray-200">
+          Sign In
+        </h2>
+
         {/* Email */}
         <div className="flex flex-col">
           <label className="font-semibold text-gray-800 dark:text-gray-200">
@@ -121,7 +123,7 @@ const LoginForm = () => {
         {/* Submit */}
         <button
           type="submit"
-          className="mt-4 bg-black dark:bg-blue-600 text-white rounded-lg h-12 hover:opacity-90 transition"
+          className="mt-4 bg-blue-800 dark:bg-blue-600 text-white rounded-lg h-12 hover:opacity-90 transition"
         >
           Sign In
         </button>

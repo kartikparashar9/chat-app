@@ -1,6 +1,7 @@
 import { Search, Settings } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import EditProfile from "../profile/EditProfile";
+import axios from "axios";
 
 const Sidebar = ({ setSelectedChat }) => {
   const [open, setOpen] = useState(false);
@@ -18,12 +19,28 @@ const Sidebar = ({ setSelectedChat }) => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const [userChats, setUserChats] = useState([]);
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const response = await axios.get(
+          "",
+        );
+
+        setUserChats(response.data.user);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    getUser();
+  }, []);
+
   return (
     <div className="w-[300px] bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col">
-
       {/* TOP BAR */}
       <div className="p-4 flex justify-between items-center">
-
         {/* LOGO */}
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
@@ -44,7 +61,6 @@ const Sidebar = ({ setSelectedChat }) => {
 
           {open && (
             <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-md z-20 overflow-hidden">
-
               {/* 👤 EDIT PROFILE */}
               <div
                 onClick={() => {
@@ -60,7 +76,6 @@ const Sidebar = ({ setSelectedChat }) => {
               <div className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm text-red-500">
                 Logout
               </div>
-
             </div>
           )}
         </div>
@@ -84,37 +99,60 @@ const Sidebar = ({ setSelectedChat }) => {
             isAI: true,
           })
         }
-        className="mx-3 mb-2 flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="mx-3 mb-2 flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       >
-        🤖 AI Assistant
+        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-lg">
+          🤖
+        </div>
+
+        <div>
+          <h3 className="font-medium text-gray-900 dark:text-white">
+            AI Assistant
+          </h3>
+
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Ask anything
+          </p>
+        </div>
       </div>
 
       {/* USERS */}
       <div className="flex-1 overflow-y-auto">
-        {[1, 2, 3, 4].map((user) => (
+        {userChats.map((chat) => (
           <div
-            key={user}
-            onClick={() =>
-              setSelectedChat({
-                id: user,
-                name: `User ${user}`,
-                isAI: false,
-              })
-            }
-            className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            key={chat._id}
+            onClick={() => setSelectedChat(chat)}
+            className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
           >
-            <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-            <p>User {user}</p>
+            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+              {chat.avatar ? (
+                <img
+                  src={chat.avatar}
+                  alt={chat.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-gray-700">
+                  {chat.name?.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col">
+              <h3 className="font-medium text-gray-900 dark:text-white">
+                {chat.name}
+              </h3>
+
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                {chat.lastMessage || "No messages yet"}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* 👇 MODAL OUTSIDE EVERYTHING (IMPORTANT FIX) */}
-      <EditProfile
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-      />
-
+      {/* MODAL OUTSIDE EVERYTHING*/}
+      <EditProfile isOpen={showProfile} onClose={() => setShowProfile(false)} />
     </div>
   );
 };
