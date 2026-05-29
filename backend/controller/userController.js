@@ -277,34 +277,48 @@ async function deleteUser(req, res) {
 // ------------------ Search User ------------------
 const searchUsers = async (req, res) => {
   try {
-    const keyword = req.query.search
-      ? {
-          $or: [
-            {
-              name: {
-                $regex: req.query.search,
-                $options: "i",
-              },
-            },
-            {
-              username: {
-                $regex: req.query.search,
-                $options: "i",
-              },
-            },
-          ],
-        }
-      : {};
+    const search = req.query.search?.trim();
 
-    const users = await User.find(keyword)
-      .find({
-        _id: {
-          $ne: req.user._id,
+    // VALIDATION
+    if (!search) {
+      return res.status(400).json({
+        message: "Search query is required",
+      });
+    }
+
+    // SEARCH QUERY
+    const keyword = {
+      $or: [
+        {
+          name: {
+            $regex: search,
+            $options: "i",
+          },
         },
-      })
-      .select("name username avatar bio");
 
-    return res.status(200).json(users);
+        {
+          username: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ],
+    };
+
+    // FIND USERS
+    const users = await User.find({
+      ...keyword,
+
+      _id: {
+        $ne: req.user._id,
+      },
+    }).select(
+      "name username avatar bio isOnline"
+    );
+
+    return res.status(200).json({
+      users,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",

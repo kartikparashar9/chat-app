@@ -24,7 +24,7 @@ const LoginForm = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if(!emailRegex.test(data.email)) {
+    if (!emailRegex.test(data.email)) {
       setFeedback("Please enter valid email.");
       return;
     }
@@ -37,10 +37,11 @@ const LoginForm = () => {
     try {
       const response = await loginApi(data);
 
-      if (response.status === 200) {
+      if (response.token) {
         setFeedback("Signed in successfully.");
 
-        setToken(data.token);
+        console.log("Response Data Token : ", response.token);
+        setToken(response.token);
 
         setData({
           email: "",
@@ -52,15 +53,12 @@ const LoginForm = () => {
     } catch (error) {
       if (error.response?.status === 401) {
         setFeedback("Incorrect password.");
-      }
-
-      else if (error.response?.status === 404) {
+      } else if (error.response?.status === 404) {
         setFeedback("Email does not exist.");
-      }
-
-      else {
+      } else {
         setFeedback("Failed to sign in.");
       }
+
       console.error("Server error:", error);
     }
   };
