@@ -7,6 +7,7 @@ const {
   acceptRequest,
   rejectRequest,
   getPendingRequests,
+  getFriends
 } = require("../controller/chatRequestController.js");
 
 const {
@@ -37,6 +38,13 @@ router.post(
 // GET PENDING REQUESTS
 router.get(
   "/pending",
+  protect,
+  getPendingRequests
+);
+
+// GET FRIENDS
+router.get(
+  "/",
   protect,
   getPendingRequests
 );

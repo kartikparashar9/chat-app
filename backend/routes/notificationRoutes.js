@@ -1,22 +1,26 @@
-const express = require('express');
+const express = require("express");
 
 const {
-    getNotifications,
-    markNotificationRead,
-    markAllNotificationsRead,
-    deleteNotification
-} = require('../controller/notificationController');
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} = require("../controller/notificationController");
 
-const { protect } = require('../middleware/jwtAuthMiddleware');
+const { protect } = require("../middleware/jwtAuthMiddleware");
 
 const router = express.Router();
 
-router.get('/', protect, getNotifications);
+// GET ALL NOTIFICATIONS
+router.get("/", protect, getNotifications);
 
-router.put('/:messageId', protect, markNotificationRead);
+// MARK ALL READ
+// router.put("/read/all", protect, markAllNotificationsRead);
 
-router.put('/read/all', protect, markAllNotificationsRead);
+// MARK SINGLE READ
+// router.put("/:notificationId", protect, markNotificationRead);
 
-router.delete('/:messageId', protect, deleteNotification);
+// DELETE NOTIFICATION
+router.delete("/:notificationId", protect, deleteNotification);
 
 module.exports = router;

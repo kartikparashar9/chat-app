@@ -3,10 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Home from "./pages/Home";
+import Notifications from "./pages/Notification";
 
 // Dummy auth check (replace with real logic later)
 const isAuthenticated = () => {
-  return localStorage.getItem("token"); 
+  return localStorage.getItem("token");
 };
 
 // Protected Route
@@ -28,11 +29,15 @@ function App() {
           path="/"
           element={
             // <PrivateRoute>
-              <Home />
+            <Home />
             // </PrivateRoute>
           }
         />
 
+        <Route
+          path="/notifications"
+          element={<Notifications />}
+        />
         {/* Redirect unknown routes */}
         {/* <Route path="*" element={<Navigate to="/" />} /> */}
 

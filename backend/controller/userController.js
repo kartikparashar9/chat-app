@@ -7,6 +7,13 @@ async function login(req, res) {
   try {
     const { email, password } = req.body;
 
+    // VALIDATION
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
+    }
+
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -30,15 +37,24 @@ async function login(req, res) {
       });
     }
 
+    // IMPORTANT: pass full user object
     const token = generateToken(user);
 
-    user.password = undefined;
+    // NEVER mutate mongoose document directly
+    const safeUser = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      avatar: user.avatar,
+    };
 
     return res.status(200).json({
       message: "Login Successful",
       token,
-      user,
+      user: safeUser,
     });
+
   } catch (error) {
     return res.status(500).json({
       message: "Internal Server Error",

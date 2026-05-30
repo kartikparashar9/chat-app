@@ -230,9 +230,25 @@ const getPendingRequests = async (
   }
 };
 
+const getFriends = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate("friends", "name username avatar isOnline");
+
+    res.status(200).json({
+      friends: user.friends,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   sendRequest,
   acceptRequest,
   rejectRequest,
   getPendingRequests,
+  getFriends
 };

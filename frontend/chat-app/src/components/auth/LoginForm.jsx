@@ -39,8 +39,6 @@ const LoginForm = () => {
 
       if (response.token) {
         setFeedback("Signed in successfully.");
-
-        console.log("Response Data Token : ", response.token);
         setToken(response.token);
 
         setData({
