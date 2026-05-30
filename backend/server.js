@@ -14,6 +14,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const aiRoutes = require("./routes/aiChatRoutes");
 const chatRequestRoutes = require("./routes/chatRequestRoutes");
 const conversationRoutes = require("./routes/conversationRoutes");
+const friendsRoutes = require('./routes/friendsRoutes');
 
 const socketHandler = require("./socket/socketHandler");
 
@@ -48,6 +49,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/request", chatRequestRoutes);
 app.use("/api/conversation", conversationRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/friends", friendsRoutes);
 
 // ================= HEALTH CHECK =================
 app.get("/", (req, res) => {

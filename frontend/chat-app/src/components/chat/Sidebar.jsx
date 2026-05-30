@@ -7,8 +7,7 @@ import {
   searchApi,
   sendFriendRequestApi,
   fetchPendingRequestsApi,
-  fetchChats,
-  signupAPi
+  fetchFriends
 } from "../../services/api";
 
 const Sidebar = ({ setSelectedChat }) => {
@@ -49,6 +48,7 @@ const Sidebar = ({ setSelectedChat }) => {
         setSentRequests(requests.map((r) => r.receiver));
       } catch (err) {
         console.log("Failed to fetch requests:", err);
+        setFeedback("Failed to fetch requests");
         setSentRequests([]);
       }
     };
@@ -111,24 +111,16 @@ const Sidebar = ({ setSelectedChat }) => {
     }
   };
 
-  const fetchFriends = async (formData) => {
-    try {
-      const response = await signupAPi(formData);
-      console.log(response)
-      
-    } catch (error) {
-      
-    }
-  }
   // FETCH CHATS
   useEffect(() => {
-    const fetchChats = async () => {
+    const fetchFriends = async () => {
       try {
-        const response = await fetchChats();
-        console.log(response);
+        const response = await fetchFriends();
+        console.log(response.requests);
+        setUserChats(response.requests);
       } catch (error) {
         console.log(error);
-        setFeedback("Failed to deted chats.");
+        setFeedback("Failed to detect chats.");
       }
     }
   })
